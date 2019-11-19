@@ -2,26 +2,47 @@ import serial
 import time
 
 def removeComment(string):
-    if (string.find(';')==-1):
+    indx = string.find(';')
+    if indx == -1:
         return string
-    return string[:string.index(';')]
+    return string[:indx]
 
 def findOK(string):
-    if (string.find('ok')==-1):
+    if (string.find(b'ok')==-1):
         return False
     return True
-    
-with open(args.file,'r') as f:
-    with serial.Serial('/dev/ttyACM0', baudrate=250000, timeout=0.01) as s:
-        time.sleep(1)
-        s.flushInput()
-        for line in f:
-            l = removeComment(line)
-            l = l.strip() # Strip all EOL characters for streaming
-            if  (l.isspace()==False and len(l)>0) :
-                s.write(l + '\n') # Send g-code block
-                out = s.readline() # Wait for response with carriage return
-                print(out)
-                while not findOK(out):
-                    out = s.readline() # Wait for response with carriage return
-                    print(out)
+
+def sendGcode(fileName, port, baudrate):    
+    with open(fileName,'r') as f:
+        with serial.Serial(port, baudrate=baudrate, timeout=0.1) as s:
+            time.sleep(1)
+            s.flushInput()
+            #set auto-temperature report every 1s
+            print(b'M155 S1\n')
+            s.write(b'M155 S1\n')
+            for line in f:  
+                l = removeComment(line)
+                l = l.strip()
+                if  (l.isspace()==False and len(l)>0) :
+                    l = l + '\n'
+                    print(l)
+                    # write gcode line
+                    s.write(l.encode())
+                    # read gcode line or give a timeout
+                    out = s.readline() 
+                    if out != b'' :
+                        print(out)
+                    t = time.time()
+                    # read until not find 'ok'
+                    while not findOK(out):
+                        # read gcode line or give a timeout
+                        out = s.readline()
+                        if out != b'' :
+                            print(out)
+                        if t-time.time() > .5:
+                            break
+
+if __name__ == '__main__':
+    port = '/dev/ttyACM0'
+    baudrate = 250000
+    sendGcode('3DBenchy.gcode', port, baudrate)
