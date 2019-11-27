@@ -1,4 +1,7 @@
-class Part:
+from mulSer import GcodeSender
+from threading import Thread, Lock
+
+class Part():
     def __init__(self, file, time, filament, material = 'PLA',quality='LOW', area=10, height=10):
         self.gcode = file
         self.filament = filament
@@ -18,6 +21,10 @@ class Part:
     def __repr__(self):
         return str(self.time)
 
+class Client():
+    def __init__(self, id, name):
+        self.id = id
+        self.name = name
 
 class Order():
     def __init__(self, id, parts, time, deadline, priority = 1, type_in = 'SERVICE'):
@@ -30,13 +37,12 @@ class Order():
         self.code = 0
         self.parts.sort()
         self.parts.reverse()
+        self.client = "CHICO"
 #TODO search which part is printing
     def onGoing(self):
         return [True if part.Ondoing else False for part in self.parts]
 
-
-
-class Printer:
+class Printer(GcodeSender):
     def __init__(self, name, material, stock, nozzle = 0.6, quality = 'LOW', type_in='Cartesiana', printableArea = 200, printableheight=180):
         self.name = name
         self.nozzle = nozzle
@@ -48,11 +54,15 @@ class Printer:
         self.stock = stock
         self.permission = False
         self.idleBed = True
+        self.initialTime = 0.0
         self.totalTime = 0.0
         self.quality = quality
         self.type = type_in
         self.printableArea = printableArea
         self.printableheight = printableheight
+        super().__init__()
+        #self.thread.__init__(self)
+        #self.sender = GcodeSender()
 
     def newPrint(self):
         part = self.queue.pop()
@@ -60,11 +70,18 @@ class Printer:
             self.stopPrint()
             print('Insufficient filament for print')
         self.idle = False
-        return part
-#TODO send serial, when finish, self.totalTime -= part.time, self.idle = True
+        print(part.gcode)
+        self.error = None
+        self.fileName = part.gcode
+        self.run()
+#TODO send serial, when fi)nish, self.totalTime -= part.time, self.idle = True
+    def nowTime(self):
+        return time.time() - self.initialTime
 
     def stopPrint(self):
-        pass
+        self.idle = True
+        self.stop = True
+        self.thread.join() 
 
     def alloc(self, part, *urgent):
         self.queue.append(part)
@@ -82,7 +99,7 @@ class Printer:
         return self.name
 
 
-class Manager:
+class Manager():
     def __init__(self):
         self.printers = []
         self.orders = []
@@ -120,15 +137,19 @@ class Manager:
             else:    
                 min(printersCompatibles).alloc(part)
         # choise the printer
-    
+
+def __loop__():
+    input()
+    p1.stopPrint()
+
 
 if __name__ == '__main__':
     g1 = Part('1', 10, 1)
     g2 = Part('2', 1, 1)
     g3 = Part('3', 25, 1)
     g4 = Part('4', 1, 1)
-    g5 = Part('5', 100, 1)
-    
+    g5 = Part('3DBenchy.gcode', 100, 1)
+
     pr2 = Order(1,[g4, g5], 101,  60)
     pr = Order(2, [g1,g2,g3], 36,  60)
     p1 = Printer('p1', 'PLA', 30)
@@ -142,3 +163,12 @@ if __name__ == '__main__':
 
     print("Fila da impressora 1: " + str(p1.queue))
     print("Fila da impressora 2: " + str(p2.queue))
+
+    print(p1.idle)
+    p1.newPrint()
+    print(p1.idle)
+    input()
+    p1.stopPrint()
+    print(p1.idle)
+    print('--')
+    print(p1.error)
