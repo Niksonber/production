@@ -1,5 +1,6 @@
 from mulSer import GcodeSender
 from threading import Thread, Lock
+from sql import DB
 
 class Part():
     def __init__(self, file, time, filament, material = 'PLA',quality='LOW', area=10, height=10):
@@ -105,6 +106,8 @@ class Manager():
         self.orders = []
         self.parts = []
         self.incopatibleParts = []
+        self.db = DB()
+        self.db.initDB()
 
     def add_printer(self, printer):
         self.printers.append(printer)
